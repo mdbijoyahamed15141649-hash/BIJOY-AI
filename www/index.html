@@ -6,82 +6,119 @@
 <title>BIJOY AI</title>
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#080d18;color:white;
- font-family:Arial,sans-serif;text-align:center;
- min-height:100vh;
-}
-header{
- padding:25px;color:#00e5ff;
- font-size:28px;font-weight:bold;letter-spacing:2px;
-}
-.logo{
- width:180px;height:180px;border-radius:50%;
- object-fit:cover;border:4px solid #00e5ff;
- margin:35px auto 20px;
- box-shadow:0 0 30px #00cfff88;
- display:block;
-}
-.status{color:#00e5ff;margin:20px;font-size:15px}
-#reply{
- margin:20px;padding:18px;
- min-height:65px;background:#101b2d;
- border-radius:15px;color:white;
-}
-input{
- width:85%;padding:16px;border-radius:12px;
- border:1px solid #00e5ff;
- background:#101b2d;color:white;font-size:16px;
-}
-button{
- padding:15px 22px;margin:10px;
- border:0;border-radius:12px;
- background:#00c9e8;color:#00111a;
- font-weight:bold;font-size:16px;
-}
+body{margin:0;background:#080d18;color:white;font-family:Arial,sans-serif;text-align:center;min-height:100vh}
+header{padding:22px;color:#00e5ff;font-size:30px;font-weight:bold}
+.logo{width:125px;height:125px;border-radius:50%;object-fit:cover;border:3px solid #00e5ff;margin:12px auto;display:block}
+.status{color:#00e5ff;margin:12px}
+#reply{margin:16px;padding:18px;min-height:75px;background:#101b2d;border-radius:15px;white-space:pre-wrap}
+input{width:88%;padding:15px;border-radius:12px;border:1px solid #00e5ff;background:#101b2d;color:white;font-size:16px}
+button{padding:13px 16px;margin:6px;border:0;border-radius:12px;background:#00c9e8;color:#00111a;font-weight:bold;font-size:15px}
+.group{margin:10px auto;padding:8px;max-width:500px}
+.small{font-size:12px;color:#9bb}
 </style>
 </head>
 <body>
-
 <header>BIJOY AI</header>
-
-<img class="logo" src="assets/logo.png" alt="BIJOY AI Logo">
-
-<div class="status">● BIJOY AI READY</div>
-
-<div id="reply">
-আসসালামু আলাইকুম স্যার। আমি আপনার BIJOY AI Assistant।
-</div>
-
-<input id="command" placeholder="আপনার নির্দেশ লিখুন...">
-<br>
-
+<img class="logo" src="assets/logo.png" alt="BIJOY AI">
+<div class="status">● BIJOY AI ASSISTANT</div>
+<div id="reply">আসসালামু আলাইকুম স্যার। আমি আপনার BIJOY AI Assistant।</div>
+<input id="command" placeholder="কমান্ড লিখুন অথবা মাইক্রোফোন চাপুন">
+<div>
 <button onclick="send()">SEND</button>
-<button onclick="listen()">🎤 SPEAK</button>
+<button onclick="listen()">🎤 VOICE</button>
+</div>
+<div class="group">
+<button onclick="device('torchOn')">🔦 ফ্ল্যাশলাইট ON</button>
+<button onclick="device('torchOff')">ফ্ল্যাশলাইট OFF</button>
+<button onclick="device('camera')">📷 ক্যামেরা</button>
+</div>
+<div class="group">
+<button onclick="device('wifi')">📶 Wi-Fi</button>
+<button onclick="device('bluetooth')">Bluetooth</button>
+<button onclick="device('settings')">⚙️ Settings</button>
+</div>
+<div class="group">
+<button onclick="device('volumeUp')">🔊 ভলিউম বাড়ান</button>
+<button onclick="device('volumeDown')">ভলিউম কমান</button>
+</div>
+<div class="small">BIJOY AI • BIJOY EDITION</div>
 
 <script>
-function send(){
- let v=document.getElementById('command').value.trim();
- if(!v)return;
- document.getElementById('reply').innerText='আপনার নির্দেশ: '+v;
+const reply = document.getElementById("reply");
+const input = document.getElementById("command");
+const native = window.Capacitor && window.Capacitor.Plugins
+    ? window.Capacitor.Plugins.DeviceControl : null;
+
+function say(text){
+ reply.innerText=text;
+ if("speechSynthesis" in window){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="bn-BD";
+  speechSynthesis.speak(u);
+ }
+}
+
+async function device(action){
+ if(!native){say("স্যার, এই সুবিধার জন্য ইনস্টল করা Android অ্যাপ প্রয়োজন।");return;}
+ try{
+  if(action==="torchOn"||action==="torchOff"){
+   await native.setTorch({enabled:action==="torchOn"});
+   say(action==="torchOn"?"স্যার, ফ্ল্যাশলাইট চালু হয়েছে।":"স্যার, ফ্ল্যাশলাইট বন্ধ হয়েছে।");
+  }else if(action==="camera"){
+   await native.openCamera();say("স্যার, ক্যামেরা খুলছি।");
+  }else if(action==="wifi"||action==="bluetooth"||action==="settings"){
+   await native.openSettings({type:action});say("স্যার, সেটিংস খুলছি।");
+  }else if(action==="volumeUp"||action==="volumeDown"){
+   let v=Number(localStorage.volume||50);
+   v=Math.max(0,Math.min(100,v+(action==="volumeUp"?10:-10)));
+   localStorage.volume=v;
+   await native.setVolume({percent:v});
+   say("স্যার, ভলিউম "+v+" শতাংশ করা হয়েছে।");
+  }
+ }catch(e){say("স্যার, কাজটি করা যায়নি: "+(e.message||e));}
+}
+
+async function send(){
+ const message=input.value.trim();
+ if(!message)return;
+ const m=message.toLowerCase();
+ input.value="";
+ if(m.includes("ফ্ল্যাশ")||m.includes("টর্চ")){
+  return device(m.includes("বন্ধ")||m.includes("off")?"torchOff":"torchOn");
+ }
+ if(m.includes("ক্যামেরা"))return device("camera");
+ if(m.includes("ওয়াইফাই")||m.includes("ওয়াইফাই")||m.includes("wifi"))return device("wifi");
+ if(m.includes("ব্লুটুথ")||m.includes("bluetooth"))return device("bluetooth");
+ if(m.includes("সেটিংস"))return device("settings");
+ if(m.includes("ভলিউম")&&(m.includes("বাড়")||m.includes("বাড়")))return device("volumeUp");
+ if(m.includes("ভলিউম")&&m.includes("কম"))return device("volumeDown");
+
+ say("স্যার, AI-এর উত্তর খুঁজছি...");
+ try{
+  const response=await fetch("http://127.0.0.1:8081/api/chat",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({message})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"AI সংযোগ সমস্যা");
+  say(data.reply||"উত্তর পাওয়া যায়নি");
+ }catch(e){
+  say("স্যার, AI সার্ভারে সংযোগ হচ্ছে না। Termux-এ BIJOY AI server চালু আছে কি না দেখুন।");
+ }
 }
 
 function listen(){
- if(!('webkitSpeechRecognition' in window)){
-  document.getElementById('reply').innerText=
-  'এই WebView-তে Voice Recognition পাওয়া যায়নি।';
-  return;
- }
- let r=new webkitSpeechRecognition();
- r.lang='bn-BD';
- r.onresult=e=>{
-  document.getElementById('command').value=
-  e.results[0][0].transcript;
-  send();
- };
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Speech){say("স্যার, এই WebView-তে ভয়েস শনাক্তকরণ পাওয়া যায়নি।");return;}
+ const r=new Speech();
+ r.lang="bn-BD";
+ r.onresult=e=>{input.value=e.results[0][0].transcript;send();};
+ r.onerror=()=>say("স্যার, ভয়েস শনাক্ত করা যায়নি। আবার চেষ্টা করুন।");
  r.start();
 }
+input.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
 </script>
-
 </body>
 </html>

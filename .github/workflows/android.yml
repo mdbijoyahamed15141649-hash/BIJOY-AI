@@ -1,4 +1,4 @@
-name: BIJOY AI APK Build
+name: BIJOY AI FINAL APK
 
 on:
   push:
@@ -8,34 +8,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Install Dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Build Android
+      - name: Build APK
         run: |
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk BIJOY-AI-FINAL.apk
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: BIJOY-AI-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: BIJOY-AI-FINAL
+          path: android/BIJOY-AI-FINAL.apk
