@@ -26,6 +26,7 @@ button{padding:13px 16px;margin:6px;border:0;border-radius:12px;background:#00c9
 <div>
 <button onclick="send()">SEND</button>
 <button onclick="listen()">🎤 VOICE</button>
+<button onclick="toggleBackgroundVoice()">🔔 BACKGROUND ON/OFF</button>
 </div>
 <div class="group">
 <button onclick="device('torchOn')">🔦 ফ্ল্যাশলাইট ON</button>
@@ -106,6 +107,30 @@ async function send(){
   say(data.reply||"উত্তর পাওয়া যায়নি");
  }catch(e){
   say("স্যার, AI সার্ভারে সংযোগ হচ্ছে না। Termux-এ BIJOY AI server চালু আছে কি না দেখুন।");
+ }
+}
+
+
+let backgroundRunning = false;
+
+async function toggleBackgroundVoice() {
+ const plugin = window.Capacitor?.Plugins?.BackgroundVoice;
+ if (!plugin) {
+  say("স্যার, Android অ্যাপ প্রয়োজন।");
+  return;
+ }
+ try {
+  if (!backgroundRunning) {
+   await plugin.start();
+   backgroundRunning = true;
+   say("স্যার, ব্যাকগ্রাউন্ড সার্ভিস চালু হয়েছে।");
+  } else {
+   await plugin.stop();
+   backgroundRunning = false;
+   say("স্যার, সার্ভিস বন্ধ হয়েছে।");
+  }
+ } catch(e) {
+  say("স্যার, সমস্যা হয়েছে: " + e.message);
  }
 }
 

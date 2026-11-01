@@ -1,24 +1,71 @@
 package com.bijoy.ai;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
 import android.media.AudioManager;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CameraAccessException;
-import android.content.pm.PackageManager;
 import android.provider.Settings;
-
+import android.speech.RecognizerIntent;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
+import java.util.ArrayList;
 
 @CapacitorPlugin(
     name = "DeviceControl",
     permissions = {
-        @Permission(alias = "camera", strings = {Manifest.permission.CAMERA})
+        @Permission(alias = "camera", strings = {Manifest.permission.CAMERA}),
+        @Permission(alias = "microphone", strings = {Manifest.permission.RECORD_AUDIO})
     }
 )
 public class DeviceControlPlugin extends Plugin {
+
+    @PluginMethod
+    public void startVoice(PluginCall call) {
+        if (getPermissionState("microphone") != PermissionState.GRANTED) {
+            requestPermissionForAlias("microphone", call, "voicePermissionCallback");
+            return;
+        }
+        launchVoice(call);
+    }
+
+    @PermissionCallback
+    private void voicePermissionCallback(PluginCall call) {
+        if (getPermissionState("microphone") == PermissionState.GRANTED) {
+            launchVoice(call);
+        } else {
+            call.reject("মাইক্রোফোন অনুমতি প্রয়োজন");
+        }
+    }
+
+    private void launchVoice(PluginCall call) {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD");
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-BD");
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "স্যার, আপনার নির্দেশ বলুন");
+        startActivityForResult(call, intent, "voiceResult");
+    }
+
+    @ActivityCallback
+    private void voiceResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+
+        if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+            ArrayList<String> matches = result.getData().getStringArrayListExtra(
+                    RecognizerIntent.EXTRA_RESULTS);
+
+            if (matches != null && !matches.isEmpty()) {
+                JSObject data = new JSObject();
+                data.put("text", matches.get(0));
+                call.resolve(data);
+                return;
+            }
+        }
+        call.reject("কথা শনাক্ত করা যায়নি");
+    }
 
     @PluginMethod
     public void openSettings(PluginCall call) {
@@ -42,26 +89,20 @@ public class DeviceControlPlugin extends Plugin {
 
     @PluginMethod
     public void openCamera(PluginCall call) {
-        try {
-            Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+        Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+        if (intent.resolveActivity(getContext().getPackageManager()) != null) {
             getActivity().startActivity(intent);
             call.resolve();
-        } catch (Exception e) {
-            call.reject("ক্যামেরা খোলা যায়নি");
+        } else {
+            call.reject("ক্যামেরা পাওয়া যায়নি");
         }
     }
 
     @PluginMethod
     public void launchApp(PluginCall call) {
         String packageName = call.getString("packageName", "");
-
-        if (packageName.isEmpty()) {
-            call.reject("অ্যাপের package name দিন");
-            return;
-        }
-
         Intent intent = getContext().getPackageManager()
-            .getLaunchIntentForPackage(packageName);
+                .getLaunchIntentForPackage(packageName);
 
         if (intent == null) {
             call.reject("অ্যাপটি পাওয়া যায়নি");
@@ -74,19 +115,12 @@ public class DeviceControlPlugin extends Plugin {
 
     @PluginMethod
     public void setVolume(PluginCall call) {
-        int percent = call.getInt("percent", 50);
-        percent = Math.max(0, Math.min(100, percent));
-
+        int percent = Math.max(0, Math.min(100, call.getInt("percent", 50)));
         AudioManager audio = (AudioManager)
-            getContext().getSystemService(Context.AUDIO_SERVICE);
-
+                getContext().getSystemService(Context.AUDIO_SERVICE);
         int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        audio.setStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            Math.round(max * percent / 100f),
-            0
-        );
-
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC,
+                Math.round(max * percent / 100f), 0);
         call.resolve();
     }
 
@@ -104,20 +138,19 @@ public class DeviceControlPlugin extends Plugin {
         if (getPermissionState("camera") == PermissionState.GRANTED) {
             changeTorch(call);
         } else {
-            call.reject("ফ্ল্যাশলাইটের জন্য ক্যামেরা অনুমতি প্রয়োজন");
+            call.reject("ক্যামেরা অনুমতি প্রয়োজন");
         }
     }
 
     private void changeTorch(PluginCall call) {
-        boolean enabled = call.getBoolean("enabled", false);
-
         try {
+            boolean enabled = call.getBoolean("enabled", false);
             CameraManager manager = (CameraManager)
-                getContext().getSystemService(Context.CAMERA_SERVICE);
+                    getContext().getSystemService(Context.CAMERA_SERVICE);
 
             for (String id : manager.getCameraIdList()) {
                 Boolean available = manager.getCameraCharacteristics(id)
-                    .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                        .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
 
                 if (Boolean.TRUE.equals(available)) {
                     manager.setTorchMode(id, enabled);
@@ -125,10 +158,9 @@ public class DeviceControlPlugin extends Plugin {
                     return;
                 }
             }
-
-            call.reject("এই ফোনে ফ্ল্যাশলাইট পাওয়া যায়নি");
+            call.reject("ফ্ল্যাশলাইট পাওয়া যায়নি");
         } catch (Exception e) {
-            call.reject("ফ্ল্যাশলাইট চালানো যায়নি: " + e.getMessage());
+            call.reject(e.getMessage());
         }
     }
 }
