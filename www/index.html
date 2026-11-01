@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIJOY AI</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080d18;color:white;
+ font-family:Arial,sans-serif;text-align:center;
+ min-height:100vh;
+}
+header{
+ padding:25px;color:#00e5ff;
+ font-size:28px;font-weight:bold;letter-spacing:2px;
+}
+.logo{
+ width:180px;height:180px;border-radius:50%;
+ object-fit:cover;border:4px solid #00e5ff;
+ margin:35px auto 20px;
+ box-shadow:0 0 30px #00cfff88;
+ display:block;
+}
+.status{color:#00e5ff;margin:20px;font-size:15px}
+#reply{
+ margin:20px;padding:18px;
+ min-height:65px;background:#101b2d;
+ border-radius:15px;color:white;
+}
+input{
+ width:85%;padding:16px;border-radius:12px;
+ border:1px solid #00e5ff;
+ background:#101b2d;color:white;font-size:16px;
+}
+button{
+ padding:15px 22px;margin:10px;
+ border:0;border-radius:12px;
+ background:#00c9e8;color:#00111a;
+ font-weight:bold;font-size:16px;
+}
+</style>
+</head>
+<body>
+
+<header>BIJOY AI</header>
+
+<img class="logo" src="assets/logo.png" alt="BIJOY AI Logo">
+
+<div class="status">● BIJOY AI READY</div>
+
+<div id="reply">
+আসসালামু আলাইকুম স্যার। আমি আপনার BIJOY AI Assistant।
+</div>
+
+<input id="command" placeholder="আপনার নির্দেশ লিখুন...">
+<br>
+
+<button onclick="send()">SEND</button>
+<button onclick="listen()">🎤 SPEAK</button>
+
+<script>
+function send(){
+ let v=document.getElementById('command').value.trim();
+ if(!v)return;
+ document.getElementById('reply').innerText='আপনার নির্দেশ: '+v;
+}
+
+function listen(){
+ if(!('webkitSpeechRecognition' in window)){
+  document.getElementById('reply').innerText=
+  'এই WebView-তে Voice Recognition পাওয়া যায়নি।';
+  return;
+ }
+ let r=new webkitSpeechRecognition();
+ r.lang='bn-BD';
+ r.onresult=e=>{
+  document.getElementById('command').value=
+  e.results[0][0].transcript;
+  send();
+ };
+ r.start();
+}
+</script>
+
+</body>
+</html>
